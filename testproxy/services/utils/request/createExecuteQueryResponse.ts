@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as protos from '../../../../protos/protos';
+import * as protos from '../../../protos/protos';
 import {SqlTypes} from '../../../../src';
 import {MetadataConsumer} from '../../../../src/execute-query/metadataconsumer';
 import {
@@ -59,8 +59,8 @@ export async function parseMetadata(preparedStatement: PreparedStatement) {
   });
   return values.map(v =>
     protos.google.bigtable.v2.ColumnMetadata.create({
-      name: v[0] as any,
-      type: v[1] as any,
+      name: v[0] as string,
+      type: v[1] as protos.google.bigtable.v2.IType,
     }),
   );
 }
@@ -219,5 +219,8 @@ export async function parseParameters(params: {
     parameters[paramName] = value;
     parameterTypes[paramName] = type;
   }
-  return [parameters, parameterTypes];
+  return [parameters, parameterTypes] as [
+    {[param: string]: SqlValue},
+    {[param: string]: SqlTypes.Type},
+  ];
 }

@@ -509,9 +509,9 @@ export class Bigtable {
       options.apiEndpoint || process.env.BIGTABLE_EMULATOR_HOST;
     this.customEndpoint = customEndpoint;
 
-    let customEndpointBaseUrl;
-    let customEndpointPort;
-    let sslCreds;
+    let customEndpointBaseUrl: string | undefined;
+    let customEndpointPort: number | undefined;
+    let sslCreds: gaxVendoredGrpc.ChannelCredentials | undefined;
 
     if (customEndpoint) {
       const customEndpointParts = customEndpoint.split(':');
