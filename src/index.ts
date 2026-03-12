@@ -487,6 +487,7 @@ export class Bigtable {
   static Cluster: Cluster;
   _metricsConfigManager: ClientSideMetricsConfigManager;
   admin: admin.BigtableAdmin;
+  closed = false;
 
   constructor(options: BigtableOptions = {}) {
     // Determine what scopes are needed.
@@ -904,6 +905,27 @@ export class Bigtable {
     let gaxStream: gax.CancellableStream;
     let stream: AbortableDuplex;
 
+    if (this.closed) {
+      const error = Object.assign(
+        new Error('The client has already been closed.'),
+        {
+          name: 'Closed',
+          code: grpc.status.ABORTED,
+          details: 'The client has already been closed.',
+          metadata: new grpc.Metadata(),
+        },
+      );
+      if (isStreamMode) {
+        stream = streamEvents(new PassThrough({objectMode: true}));
+        stream.abort = () => {};
+        setImmediate(() => stream.destroy(error));
+        return stream;
+      } else {
+        callback?.(error as ServiceError);
+        return;
+      }
+    }
+
     const prepareGaxRequest = (
       callback: (err: Error | null, fn?: Function) => void,
     ) => {
@@ -1021,11 +1043,22 @@ export class Bigtable {
    * Close all bigtable clients. New requests will be rejected but it will not
    * kill connections with pending requests.
    */
-  close(): Promise<void[]> {
+  async close(): Promise<void[]> {
+    // Close all of the clients.
     const combined = Object.keys(this.api).map(clientType =>
       this.api[clientType].close(),
     );
-    return Promise.all(combined);
+    const results = await Promise.all(combined);
+
+    // Clear them out of our cache.
+    Object.keys(this.api).forEach(clientType => {
+      delete this.api[clientType];
+    });
+
+    // Mark as closed.
+    this.closed = true;
+
+    return results;
   }
 
   /**
